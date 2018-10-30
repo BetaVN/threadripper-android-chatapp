@@ -23,6 +23,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:icon">
+
         <activity
             android:name=".Splash"
             android:theme="@style/AppThemeFull">
@@ -55,25 +56,24 @@
             android:name=".authentication.ForgotPasswordActivity"
             android:theme="@style/AppThemeFull" />
         <activity
+            android:name=".authenticated.CallingActivity"
+            android:theme="@style/AppThemeFull" />
+        <activity
             android:name=".authenticated.VideoCallActivity"
             android:theme="@style/AppThemeFull" />
         <activity
             android:name=".authenticated.PhotoViewActivity"
             android:theme="@style/AppThemeFull" />
 
-        <activity android:name=".authenticated.VideoChatViewActivity" />
-
         <service
             android:name=".services.SocketService"
             android:enabled="true"
-            android:exported="true"
-            android:permission="" />
+            android:exported="true" />
 
         <receiver
             android:name=".receivers.SocketReceiver"
             android:enabled="true"
-            android:exported="true"
-            android:permission="" />
+            android:exported="true" />
 
         <receiver android:name=".receivers.NetworkChangeReceiver">
             <intent-filter>
@@ -82,7 +82,6 @@
                     tools:ignore="BatteryLife" />
             </intent-filter>
         </receiver>
-
     </application>
 
 </manifest>

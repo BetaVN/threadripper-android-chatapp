@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -12,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.andexert.library.RippleView;
+import com.chatapp.threadripper.BaseActivity;
 import com.chatapp.threadripper.R;
 import com.chatapp.threadripper.utils.Constants;
 import com.chatapp.threadripper.utils.ImageLoader;
@@ -19,7 +19,7 @@ import com.chatapp.threadripper.utils.ShowToast;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
-public class VideoCallActivity extends BaseMainActivity {
+public class CallingActivity extends BaseMainActivity {
 
     CircleImageView cirImgUserAvatar;
     RippleView rvCall, rvCallEnd;
@@ -28,13 +28,12 @@ public class VideoCallActivity extends BaseMainActivity {
 
 
     boolean callerSide; // me, caller or callee
-    String username, userAvatar, displayName; // not me, the caller or callee
-
+    String username, userAvatar; // not me, the caller or callee
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_video_call);
+        setContentView(R.layout.activity_calling);
 
         if (Build.VERSION.SDK_INT >= 21) {
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
@@ -57,7 +56,6 @@ public class VideoCallActivity extends BaseMainActivity {
         Intent intent = getIntent();
         callerSide = intent.getBooleanExtra(Constants.IS_CALLER_SIDE, false);
         username = intent.getStringExtra(Constants.USER_USERNAME);
-        displayName = intent.getStringExtra(Constants.USER_DISPLAY_NAME);
         userAvatar = intent.getStringExtra(Constants.USER_PHOTO_URL);
 
         // Hide icon call (green) when is caller
@@ -66,31 +64,34 @@ public class VideoCallActivity extends BaseMainActivity {
         }
 
         // Change user info
-        tvUsername.setText(displayName);
+        tvUsername.setText(username);
         ImageLoader.loadUserAvatar(cirImgUserAvatar, userAvatar);
     }
 
     void setListener() {
-        rvCallEnd.setOnRippleCompleteListener(rippleView -> handleEndCalling());
-        rvCall.setOnRippleCompleteListener(rippleView -> handleAcceptCalling());
+        rvCallEnd.setOnRippleCompleteListener(new RippleView.OnRippleCompleteListener() {
+            @Override
+            public void onComplete(RippleView rippleView) {
+                handleEndCalling();
+            }
+        });
+
+        rvCall.setOnRippleCompleteListener(new RippleView.OnRippleCompleteListener() {
+            @Override
+            public void onComplete(RippleView rippleView) {
+                handleAcceptCalling();
+            }
+        });
     }
 
     void handleEndCalling() {
         // TODO
-        if (callerSide) {
-            finish();
-        } else {
-            finish();
-        }
+
+        finish();
     }
 
     void handleAcceptCalling() {
         // TODO
-        if (callerSide) {
-
-        } else {
-
-        }
     }
 
     private void changeStatusBarColor() {
@@ -105,5 +106,4 @@ public class VideoCallActivity extends BaseMainActivity {
     public void onBackPressed() {
         ShowToast.lengthShort(this, "Please click RED button to exit");
     }
-
 }

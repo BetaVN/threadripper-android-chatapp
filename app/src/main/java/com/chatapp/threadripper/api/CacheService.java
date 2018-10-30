@@ -46,8 +46,8 @@ public class CacheService {
     private String getCacheAuthToken() {
         AppState state = realm.where(AppState.class).findFirst();
         if (state == null) return null;
-        if (state.getUsername() == null ||
-                state.getUsername().isEmpty()) return null;
+        if (state.getCurrentUser().getUsername() == null ||
+                state.getCurrentUser().getUsername().isEmpty()) return null;
         if (state.getChatAuthToken().isEmpty()) return null;
         return state.getChatAuthToken();
     }
@@ -64,14 +64,8 @@ public class CacheService {
         AppState state = realm.where(AppState.class).findFirst();
 
         if (state != null) {
-            Preferences.setCurrentUser(new User(
-                            state.getUsername(), state.getEmail(), state.getPassword(),
-                            state.getDisplayName(), state.getPhotoUrl()
-                    )
-            );
-
+            Preferences.setCurrentUser(state.getCurrentUser());
             Preferences.setChatAuthToken(state.getChatAuthToken());
-
             Preferences.setFirstUseApp(state.isFirstUseApp());
             Preferences.setFirstUseProfileSettings(state.isFirstUseProfileSettings());
             Preferences.setFirstUseChatting(state.isFirstUseChatting());
@@ -80,7 +74,7 @@ public class CacheService {
     }
 
     /**
-     * On runtime, maybe updateFromServer state of user to cache, via AppState on RAM
+     * On runtime, maybe update state of user to cache, via AppState on RAM
      */
     public void syncPreferencesInCache() {
         realm.executeTransaction(realm -> {
@@ -90,13 +84,8 @@ public class CacheService {
                 state = new AppState();
             }
 
-            state.setUsername(Preferences.getCurrentUser().getUsername());
-            state.setDisplayName(Preferences.getCurrentUser().getDisplayName());
-            state.setEmail(Preferences.getCurrentUser().getEmail());
-            state.setPhotoUrl(Preferences.getCurrentUser().getPhotoUrl());
-
+            state.setCurrentUser(Preferences.getCurrentUser());
             state.setChatAuthToken(Preferences.getChatAuthToken());
-
             state.setFirstUseApp(Preferences.isFirstUseApp());
             state.setFirstUseProfileSettings(Preferences.isFirstUseProfileSettings());
             state.setFirstUseChatting(Preferences.isFirstUseChatting());
@@ -140,10 +129,6 @@ public class CacheService {
                 .findAll();
     }
 
-    public User retrieveCacheUser(String username) {
-        return realm.where(User.class).equalTo("username", username).findFirst();
-    }
-
     public RealmResults<User> retrieveCacheFriendsOnline() {
         return realm.where(User.class)
                 .equalTo("relationship", Constants.RELATIONSHIP_FRIEND)
@@ -151,18 +136,6 @@ public class CacheService {
                 .findAll();
     }
 
-    public RealmResults<User> retrieveCacheSelectedMember() {
-        return realm.where(User.class)
-                .equalTo("isSelectedMember", true)
-                .findAll();
-    }
-
-    public RealmResults<User> retrieveCacheMatchedUsers() {
-        return realm.where(User.class)
-                .equalTo("isMatched", true)
-                .limit(20)
-                .findAll();
-    }
 
     public RealmResults<Conversation> retrieveCacheConversations() {
         return realm.where(Conversation.class).findAll();
@@ -174,11 +147,6 @@ public class CacheService {
                 .findAll();
     }
 
-    public Conversation retrieveCacheConversation(String conversationId) {
-        return realm.where(Conversation.class).equalTo("conversationId", conversationId).findFirst();
-    }
-
-
     public RealmResults<Message> retrieveCacheMessages(String conversationId) {
         return realm.where(Message.class)
                 .equalTo("conversationId", conversationId)
@@ -189,65 +157,29 @@ public class CacheService {
     public void setUserOnlineOrOffline(String username, boolean isOnline) {
         realm.executeTransaction(realm -> {
             User user = realm.where(User.class).equalTo("username", username).findFirst();
-            if (user != null) {
-                user.setOnline(isOnline);
-                realm.copyToRealmOrUpdate(user);
-            }
-        });
-    }
+            user.setOnline(isOnline);
 
-    public void setUserMatchedInSearching(String username, boolean isMatched) {
-        realm.executeTransaction(realm -> {
-            User user = realm.where(User.class).equalTo("username", username).findFirst();
-            if (user != null) {
-                user.setMatched(isMatched);
-                realm.copyToRealmOrUpdate(user);
-            }
-        });
-    }
-
-    public void setUserSelected(String username, boolean isSelected) {
-        realm.executeTransaction(realm -> {
-            User user = realm.where(User.class).equalTo("username", username).findFirst();
-            if (user != null) {
-                user.setSelectedMember(isSelected);
-                realm.copyToRealmOrUpdate(user);
-            }
-        });
-    }
-
-    public void setUserSelectedAsync(String username, boolean isSelected) {
-        realm.executeTransactionAsync(realm -> {
-            User user = realm.where(User.class).equalTo("username", username).findFirst();
-            if (user != null) {
-                user.setSelectedMember(isSelected);
-                realm.copyToRealmOrUpdate(user);
-            }
+            realm.copyToRealmOrUpdate(user);
         });
     }
 
     public void updateLastMessageConversation(String conversationId, long lastMessageId) {
         realm.executeTransaction(realm -> {
             Conversation conversation = realm.where(Conversation.class).equalTo("conversationId", conversationId).findFirst();
-            if (conversation != null) {
-                Message message = realm.where(Message.class).equalTo("messageId", lastMessageId).findFirst();
-                conversation.setLastMessage(message);
-                conversation.increaseNotificationCount();
+            Message message = realm.where(Message.class).equalTo("messageId", lastMessageId).findFirst();
+            conversation.setLastMessage(message);
+            conversation.increaseNotificationCount();
 
-                realm.copyToRealmOrUpdate(conversation);
-            }
+            realm.copyToRealmOrUpdate(conversation);
         });
     }
 
     public void setReadAllMessagesConversation(String conversationId) {
         realm.executeTransaction(realm -> {
             Conversation conversation = realm.where(Conversation.class).equalTo("conversationId", conversationId).findFirst();
-            if (conversation != null) {
-                conversation.setNotiCount(0);
-                realm.copyToRealmOrUpdate(conversation);
-            }
+            conversation.setNotiCount(0);
+
+            realm.copyToRealmOrUpdate(conversation);
         });
     }
-
-
 }

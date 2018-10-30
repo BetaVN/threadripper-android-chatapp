@@ -96,23 +96,6 @@ public class SocketService extends Service {
         sendBroadcast(intent);
     }
 
-    void sendBroadcastRead(Message message) {
-        Intent intent = new Intent();
-        intent.setAction(Constants.ACTION_STRING_RECEIVER_READ);
-        intent.putExtra(Constants.CONVERSATION_ID, message.getConversationId());
-        intent.putExtra(Constants.USER_USERNAME, message.getUsername());
-        sendBroadcast(intent);
-    }
-
-    void sendBroadcastCall(Message message) {
-        Intent intent = new Intent();
-        intent.setAction(Constants.ACTION_STRING_RECEIVER_CALL);
-        intent.putExtra(Constants.USER_USERNAME, message.getUsername());
-        intent.putExtra(Constants.TYPE_CALLING, message.getContent());
-        intent.putExtra(Constants.EXTRA_VIDEO_CHANNEL_TOKEN, message.getUsername());
-        sendBroadcast(intent);
-    }
-
     @SuppressLint("CheckResult")
     void initSocket() {
         client = Stomp.over(Stomp.ConnectionProvider.OKHTTP, Config.WEB_SOCKET_FULL_PATH);
@@ -169,11 +152,9 @@ public class SocketService extends Service {
 
                         case Message.MessageType.CALL:
                         case Message.MessageType.VIDEO:
-                            sendBroadcastCall(message);
                             break;
 
                         case Message.MessageType.READ:
-                            // sendBroadcastRead(message);
                             break;
 
                         case Message.MessageType.TYPING:

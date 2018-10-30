@@ -7,9 +7,7 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 
 import com.chatapp.threadripper.models.Message;
-import com.chatapp.threadripper.models.User;
 import com.chatapp.threadripper.services.SocketService;
-import com.chatapp.threadripper.utils.Constants;
 import com.chatapp.threadripper.utils.Preferences;
 
 public class SocketManager {
@@ -47,8 +45,6 @@ public class SocketManager {
 
             @Override
             public void onServiceDisconnected(ComponentName componentName) {
-                mSocketService.disconnectSocket();
-
                 mBound = false; // mark currently is unbound
                 mSocketService = null; // delete instance
             }
@@ -133,22 +129,20 @@ public class SocketManager {
         return pushMessage(message);
     }
 
+    public boolean sendFile(String conversationId, String url) {
+        Message message = new Message();
+        message.setType(Message.MessageType.FILE);
+        message.setConversationId(conversationId);
+        message.setContent(url);
+
+        return pushMessage(message);
+    }
+
     public boolean sendReadMessages(String conversationId, long messageId) {
         Message message = new Message();
         message.setType(Message.MessageType.READ);
         message.setConversationId(conversationId);
         message.setContent(String.valueOf(messageId));
-
-        return pushMessage(message);
-    }
-
-    public boolean sendCalling(User targetUser, String typeCalling, String channelId) {
-        // targetUser is partner in the calling
-        Message message = new Message();
-        message.setType(Message.MessageType.CALL);
-        message.setConversationId(targetUser.getPrivateConversationId());
-        message.setContent(typeCalling);
-        message.setUsername(channelId);
 
         return pushMessage(message);
     }

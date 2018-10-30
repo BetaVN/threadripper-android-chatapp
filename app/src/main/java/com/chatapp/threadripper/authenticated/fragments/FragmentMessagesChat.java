@@ -1,16 +1,15 @@
 package com.chatapp.threadripper.authenticated.fragments;
 
-import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -24,23 +23,19 @@ import com.chatapp.threadripper.api.ApiService;
 import com.chatapp.threadripper.api.CacheService;
 import com.chatapp.threadripper.authenticated.LayoutFragmentActivity;
 import com.chatapp.threadripper.authenticated.SearchUsersActivity;
-import com.chatapp.threadripper.authenticated.VideoCallActivity;
 import com.chatapp.threadripper.authenticated.adapters.HorizontalAvatarAdapter;
 import com.chatapp.threadripper.authenticated.adapters.MessagesChatAdapter;
 import com.chatapp.threadripper.models.Conversation;
-import com.chatapp.threadripper.models.ErrorResponse;
 import com.chatapp.threadripper.models.Message;
 import com.chatapp.threadripper.models.User;
 import com.chatapp.threadripper.receivers.SocketReceiver;
 import com.chatapp.threadripper.utils.Constants;
-import com.chatapp.threadripper.utils.ModelUtils;
 import com.chatapp.threadripper.utils.Preferences;
-import com.chatapp.threadripper.utils.TargetPrompt;
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -51,12 +46,10 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
 
     String TAG = "FragmentMessagesChat";
 
-    Context mContext;
-
     private RecyclerView mRcvConversations, mRcvHorizontalAvatar;
     private MessagesChatAdapter mAdapterConversations;
     private HorizontalAvatarAdapter mAdapterHorizontalAvatar;
-    private TextView tvNoAnyConversations, tvNoAnyFriends;
+    private TextView tvNoAnyConversations, tvNoAnyFriends, tvLoading;
     private SwipeRefreshLayout swipeContainer;
 
     IntentFilter mIntentFilter;
@@ -85,70 +78,9 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
 
         fetchConversations();
 
-        fetchFriends();
-
         initSocketReceiver();
 
         return view;
-    }
-
-    void checkRunWalkThrough() {
-        // showWalkThroughSearch(() -> {
-        //     showWalkThroughMenu(() -> {
-        //
-        //     });
-        // });
-        if (Preferences.isFirstUseApp()) {
-            showWalkThroughSearch(() -> {
-                Preferences.setFirstUseApp(false);
-                CacheService.getInstance().syncPreferencesInCache();
-            });
-        }
-    }
-
-    interface SimpleCallback {
-        void onComplete();
-    }
-
-    void showWalkThroughSearch(SimpleCallback cb) {
-        TargetPrompt.promptTargetWhite(mContext, R.id.menuIconAdd,
-                "New Conversation",
-                "Tap to search your friends and create new conversations for a funny chat",
-                new TargetPrompt.OnCallbackListener() {
-                    @Override
-                    public void onAccepted() {
-                        cb.onComplete();
-                    }
-
-                    @Override
-                    public void onDenied() {
-                        cb.onComplete();
-                    }
-                });
-    }
-    // void showWalkThroughMenu(SimpleCallback cb) {
-    //     TargetPrompt.prompt(mContext, android.R.id.home,
-    //             "Change password",
-    //             "You can change your current password with a new password",
-    //             new TargetPrompt.OnCallbackListener() {
-    //                 @Override
-    //                 public void onAccepted() {
-    //                     cb.onComplete();
-    //                 }
-    //
-    //                 @Override
-    //                 public void onDenied() {
-    //                     cb.onComplete();
-    //                 }
-    //             });
-    //
-    // }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-
-        mContext = context;
     }
 
     @Override
@@ -167,15 +99,14 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
         mIntentFilter.addAction(Constants.ACTION_STRING_RECEIVER_LEAVE);
         // mIntentFilter.addAction(Constants.ACTION_STRING_RECEIVER_TYPING);
         // mIntentFilter.addAction(Constants.ACTION_STRING_RECEIVER_READ);
-        mIntentFilter.addAction(Constants.ACTION_STRING_RECEIVER_CALL);
 
         mSocketReceiver.setListener(this);
     }
 
     void initViews(View view) {
-
         tvNoAnyConversations = (TextView) view.findViewById(R.id.tvNoAnyConversations);
         tvNoAnyFriends = (TextView) view.findViewById(R.id.tvNoAnyFriends);
+        // tvLoading = (TextView) view.findViewById(R.id.tvLoading);
 
         // Friends Recycler View
         mRcvConversations = (RecyclerView) view.findViewById(R.id.rcvMessages);
@@ -190,36 +121,26 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
         conversations.addChangeListener(conversations -> {
             if (conversations.isEmpty()) {
                 tvNoAnyConversations.setVisibility(View.VISIBLE);
-                mRcvConversations.setVisibility(View.GONE);
             } else {
                 tvNoAnyConversations.setVisibility(View.GONE);
-                mRcvConversations.setVisibility(View.VISIBLE);
             }
         });
-
-        tvNoAnyConversations.setVisibility(View.VISIBLE);
-        mRcvConversations.setVisibility(View.GONE);
 
         // Horizontal Avatar Recycler View
         mRcvHorizontalAvatar = (RecyclerView) view.findViewById(R.id.rcvHorizontalAvatar);
         mRcvHorizontalAvatar.setHasFixedSize(true);
-        mRcvHorizontalAvatar.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+        mRcvHorizontalAvatar.setLayoutManager(new LinearLayoutManager(getContext()));
 
         onlineFriends = CacheService.getInstance().retrieveCacheFriendsOnline();
 
         mAdapterHorizontalAvatar = new HorizontalAvatarAdapter(getContext(), onlineFriends);
         mRcvHorizontalAvatar.setAdapter(mAdapterHorizontalAvatar);
 
-        tvNoAnyFriends.setVisibility(View.VISIBLE);
-        mRcvHorizontalAvatar.setVisibility(View.GONE);
-
         onlineFriends.addChangeListener(users -> {
             if (users.isEmpty()) {
                 tvNoAnyFriends.setVisibility(View.VISIBLE);
-                mRcvHorizontalAvatar.setVisibility(View.GONE);
             } else {
                 tvNoAnyFriends.setVisibility(View.GONE);
-                mRcvHorizontalAvatar.setVisibility(View.VISIBLE);
             }
         });
 
@@ -233,48 +154,7 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
                 android.R.color.holo_blue_bright
         );
 
-        swipeContainer.setOnRefreshListener(() -> {
-            fetchFriends();
-            fetchConversations();
-        });
-    }
-
-    void fetchFriends() {
-
-        ApiService.getInstance().getFriends().enqueue(new Callback<List<Conversation>>() {
-            @Override
-            public void onResponse(Call<List<Conversation>> call, Response<List<Conversation>> response) {
-                if (response.isSuccessful()) {
-                    ArrayList<Conversation> items = (ArrayList<Conversation>) response.body();
-                    if (items == null || items.isEmpty()) {
-                        // no do anything
-                    } else {
-                        for (Conversation c : items) {
-                            ModelUtils.parseConversationToFriend(c);
-                        }
-                    }
-
-                } else {
-                    Gson gson = new Gson();
-                    try {
-                        ErrorResponse err = gson.fromJson(response.errorBody().string(), ErrorResponse.class);
-                        showError(err.getMessage());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        showError(e.getMessage());
-                    }
-                }
-
-                swipeContainer.setRefreshing(false);
-            }
-
-            @Override
-            public void onFailure(Call<List<Conversation>> call, Throwable t) {
-                showError(t.getMessage());
-                swipeContainer.setRefreshing(false);
-            }
-        });
-
+        swipeContainer.setOnRefreshListener(this::fetchConversations);
     }
 
     void fetchConversations() {
@@ -287,25 +167,19 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
                         // no do anything
                     } else {
                         for (Conversation c : items) {
-                            c.updateFromServer();
-
-                            if (c.getListUser().size() == 2) {
-                                ModelUtils.parseConversationToFriend(c);
-                            }
-
+                            c.update();
                             CacheService.getInstance().addOrUpdateCacheConversation(c);
                         }
                     }
 
                 } else {
-                    Gson gson = new Gson();
-                    try {
-                        ErrorResponse err = gson.fromJson(response.errorBody().string(), ErrorResponse.class);
-                        showError(err.getMessage());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        showError(e.getMessage());
-                    }
+                    // no do anything
+                }
+
+                if (conversations.isEmpty()) {
+                    tvNoAnyConversations.setVisibility(View.VISIBLE);
+                } else {
+                    tvNoAnyConversations.setVisibility(View.GONE);
                 }
 
                 swipeContainer.setRefreshing(false);
@@ -313,7 +187,6 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
 
             @Override
             public void onFailure(@NonNull Call<List<Conversation>> call, @NonNull Throwable t) {
-                showError(t.getMessage());
                 swipeContainer.setRefreshing(false);
             }
         });
@@ -321,16 +194,12 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
 
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         menu.clear();
-        inflater.inflate(R.menu.menu_add, menu);
-
-        new Handler().post(() -> {
-            checkRunWalkThrough();
-        });
+        inflater.inflate(R.menu.menu_search, menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.menuIconAdd) {
+        if (item.getItemId() == R.id.menuIconSeach) {
             startActivity(new Intent(getContext(), SearchUsersActivity.class));
             return true;
         }
@@ -353,68 +222,17 @@ public class FragmentMessagesChat extends Fragment implements SocketReceiver.OnC
     }
 
     @Override
+    public void onJoin(String username) {
+        CacheService.getInstance().setUserOnlineOrOffline(username, true);
+    }
+
+    @Override
+    public void onLeave(String username) {
+        CacheService.getInstance().setUserOnlineOrOffline(username, false);
+    }
+
+    @Override
     public void onTyping(String conversationId, String username, boolean typing) {
         // no receive broadcast
-    }
-
-    @Override
-    public void onRead(String conversationId, String username) {
-        // no receive broadcast
-    }
-
-    @Override
-    public void onCall(User targetUser, String typeCalling, String channelId) {
-
-        switch (typeCalling) {
-            case Constants.CALLEE_ACCEPT_REQUEST_CALL:
-
-                break;
-
-            case Constants.CALLEE_REJECT_REQUEST_CALL:
-
-                break;
-
-            case Constants.CALLER_REQUEST_CALLING:
-
-                if (targetUser.getUsername().equals(Preferences.getCurrentUser().getUsername()))
-                    break;
-
-                onCallComing(targetUser, channelId);
-
-                break;
-
-            case Constants.CALLER_CANCEL_REQUEST:
-
-                break;
-        }
-    }
-
-    void onCallComing(User targetUser, String channelId) {
-        Intent intent = new Intent(mContext, VideoCallActivity.class);
-
-        User user = new User();
-        user.setUsername(targetUser.getUsername());
-        user.setPhotoUrl(targetUser.getPhotoUrl());
-        user.setDisplayName(targetUser.getDisplayName());
-        user.setPrivateConversationId(targetUser.getPrivateConversationId());
-
-        intent.putExtra(Constants.IS_CALLER_SIDE, false); // user who start a calling is a caller
-        intent.putExtra(Constants.USER_MODEL, user);
-        intent.putExtra(Constants.EXTRA_VIDEO_CHANNEL_TOKEN, channelId);
-
-        mContext.startActivity(intent);
-    }
-
-    void showError(String msg) {
-        ((LayoutFragmentActivity) getActivity()).ShowErrorDialog(msg);
-    }
-
-    @Override
-    public void onDestroy() {
-
-        conversations.removeAllChangeListeners();
-        onlineFriends.removeAllChangeListeners();
-
-        super.onDestroy();
     }
 }

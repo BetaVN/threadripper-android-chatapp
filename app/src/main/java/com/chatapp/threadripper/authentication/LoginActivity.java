@@ -35,6 +35,8 @@ public class LoginActivity extends BaseActivity {
     TextView tvSignUp, tvForgot;
     EditText edtUsername, edtPassword;
 
+    StompClient client;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -101,10 +103,6 @@ public class LoginActivity extends BaseActivity {
                     } catch (Exception e) {
                         e.printStackTrace();
                         LoginActivity.this.ShowErrorDialog(e.getMessage());
-
-                        // For Test
-                        startActivity(new Intent(LoginActivity.this, LayoutFragmentActivity.class));
-                        finish();
                     }
                 }
             }
@@ -113,10 +111,6 @@ public class LoginActivity extends BaseActivity {
             public void onFailure(Call<ApiResponseData> call, Throwable t) {
                 SweetDialog.hideLoading();
                 LoginActivity.this.ShowErrorDialog(t.getMessage());
-
-                // For Test
-                startActivity(new Intent(LoginActivity.this, LayoutFragmentActivity.class));
-                finish();
             }
         });
     }

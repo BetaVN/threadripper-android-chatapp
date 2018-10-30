@@ -12,18 +12,15 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.chatapp.threadripper.R;
-import com.chatapp.threadripper.api.TestApiService;
 import com.chatapp.threadripper.authenticated.LayoutFragmentActivity;
-import com.chatapp.threadripper.authenticated.adapters.VideoCallListAdapter;
-
-import java.util.ArrayList;
+import com.chatapp.threadripper.authenticated.adapters.ContactAdapter;
 
 
-public class FragmentVideoCallList extends Fragment {
+public class FragmentContacts extends Fragment implements ContactAdapter.ViewHolder.ClickListener {
     private RecyclerView mRecyclerView;
-    private VideoCallListAdapter mAdapter;
+    private ContactAdapter mAdapter;
 
-    public FragmentVideoCallList() {
+    public FragmentContacts() {
         setHasOptionsMenu(true);
     }
 
@@ -34,30 +31,50 @@ public class FragmentVideoCallList extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_video_call_list, null, false);
+        View view = inflater.inflate(R.layout.fragment_contacts, null, false);
 
         getActivity().supportInvalidateOptionsMenu();
-        ((LayoutFragmentActivity) getActivity()).changeTitle(R.id.toolbar, "Video Call");
+        ((LayoutFragmentActivity) getActivity()).changeTitle(R.id.toolbar, "Contacts");
 
         mRecyclerView = (RecyclerView) view.findViewById(R.id.rcvMessages);
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mAdapter = new VideoCallListAdapter(getContext(), null);
+        mAdapter = new ContactAdapter(getContext(), null, this);
         mRecyclerView.setAdapter(mAdapter);
 
-        TestApiService.getInstance().getUsersList(new TestApiService.OnCompleteListener() {
-            @Override
-            public void onSuccess(ArrayList list) {
-                mAdapter.setArrayList(list);
-            }
-
-            @Override
-            public void onFailure(String errorMessage) {
-
-            }
-        });
+        // TestApiService.getInstance().getContactsList(new TestApiService.OnCompleteListener() {
+        //     @Override
+        //     public void onSuccess(ArrayList list) {
+        //         mAdapter.setArrayList(list);
+        //     }
+        //
+        //     @Override
+        //     public void onFailure(String errorMessage) {
+        //
+        //     }
+        // });
 
         return view;
+    }
+
+    @Override
+    public void onItemClicked(int position) {
+
+    }
+
+    @Override
+    public boolean onItemLongClicked(int position) {
+        toggleSelection(position);
+        return true;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        return false;
+    }
+
+    private void toggleSelection(int position) {
+        mAdapter.toggleSelection(position);
     }
 
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {

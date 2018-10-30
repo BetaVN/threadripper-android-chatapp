@@ -10,76 +10,102 @@ import android.widget.TextView;
 
 import com.andexert.library.RippleView;
 import com.chatapp.threadripper.R;
+import com.chatapp.threadripper.authenticated.CallingActivity;
 import com.chatapp.threadripper.authenticated.VideoCallActivity;
 import com.chatapp.threadripper.models.User;
 import com.chatapp.threadripper.utils.Constants;
 import com.chatapp.threadripper.utils.ImageLoader;
-import com.chatapp.threadripper.utils.Preferences;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import de.hdodenhof.circleimageview.CircleImageView;
-import io.realm.OrderedRealmCollection;
-import io.realm.RealmRecyclerViewAdapter;
 
 
-public class VideoCallListAdapter extends RealmRecyclerViewAdapter<User, VideoCallListAdapter.ViewHolder> {
+public class VideoCallListAdapter extends SelectableAdapter<VideoCallListAdapter.ViewHolder> {
 
+    private List<User> mArrayList;
     private Context mContext;
 
 
-    public VideoCallListAdapter(Context context, OrderedRealmCollection<User> arrayList) {
-        super(arrayList, true);
+    public VideoCallListAdapter(Context context, List<User> arrayList) {
         this.mContext = context;
+
+        if (arrayList != null) this.mArrayList = arrayList;
+        else this.mArrayList = new ArrayList<>();
     }
 
+    @Override
+    public int getItemCount() {
+        return mArrayList.size();
+    }
+
+    public void setArrayList(ArrayList<User> users) {
+        this.mArrayList.clear();
+        this.mArrayList.addAll(users);
+        this.notifyDataSetChanged();
+    }
+
+    public void addItem(User item) {
+        this.mArrayList.add(item);
+        this.notifyItemChanged(this.mArrayList.size()-1);
+    }
+
+    public User getItem(int position) {
+        return this.mArrayList.get(position);
+    }
+
+
+    // Create new views
     @Override
     public VideoCallListAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
         View itemLayoutView = LayoutInflater.from(parent.getContext()).inflate(
                 R.layout.list_item_video_call, null);
 
-        return new ViewHolder(itemLayoutView);
+        VideoCallListAdapter.ViewHolder viewHolder = new VideoCallListAdapter.ViewHolder(itemLayoutView);
+
+        return viewHolder;
     }
 
 
     @Override
     public void onBindViewHolder(VideoCallListAdapter.ViewHolder viewHolder, final int position) {
 
-        User user = getItem(position);
-
-        viewHolder.tvName.setText(user.getDisplayName());
-
-        viewHolder.online_indicator.setVisibility(user.isOnline() ? View.VISIBLE : View.GONE);
+        viewHolder.tvName.setText(mArrayList.get(position).getDisplayName());
 
         // load avatar
-        ImageLoader.loadUserAvatar(viewHolder.cirImgUserAvatar, user.getPhotoUrl());
+        ImageLoader.loadUserAvatar(viewHolder.cirImgUserAvatar, mArrayList.get(position).getPhotoUrl());
 
-        viewHolder.rvCall.setOnRippleCompleteListener(rippleView -> handleStartCalling(position, false));
+        viewHolder.rvCall.setOnRippleCompleteListener(rippleView -> handleStartCalling(position));
 
-        viewHolder.rvCallVideo.setOnRippleCompleteListener(rippleView -> handleStartCalling(position, true));
+        viewHolder.rvCallVideo.setOnRippleCompleteListener(rippleView -> handleStartCallingVideo(position));
     }
 
-    private void handleStartCalling(int position, boolean callVideoOrAudio) {
-        Intent intent = new Intent(mContext, VideoCallActivity.class);
+    void handleStartCalling(int position) {
+        // ShowToast.lengthShort(this.mContext, "Calling...");
 
-        User userRealm = getItem(position);
-
-        User user = new User();
-        user.setUsername(userRealm.getUsername());
-        user.setPhotoUrl(userRealm.getPhotoUrl());
-        user.setDisplayName(userRealm.getDisplayName());
-        user.setPrivateConversationId(userRealm.getPrivateConversationId());
-
-        String channelId = "THREADRIPPER"
-                + Preferences.getCurrentUser().getUsername()
-                + user.getUsername();
-
+        Intent intent = new Intent(this.mContext, CallingActivity.class);
         intent.putExtra(Constants.IS_CALLER_SIDE, true); // user who start a calling is a caller
-        intent.putExtra(Constants.USER_MODEL, user);
-        intent.putExtra(Constants.CALLING_VIDEO_OR_AUDIO, callVideoOrAudio);
-        intent.putExtra(Constants.EXTRA_VIDEO_CHANNEL_TOKEN, channelId);
+        intent.putExtra(Constants.USER_USERNAME, this.mArrayList.get(position).getUsername());
+        intent.putExtra(Constants.USER_DISPLAY_NAME, this.mArrayList.get(position).getDisplayName());
+        intent.putExtra(Constants.USER_PHOTO_URL, this.mArrayList.get(position).getPhotoUrl());
 
-        mContext.startActivity(intent);
+        this.mContext.startActivity(intent);
     }
+
+    void handleStartCallingVideo(int position) {
+        // ShowToast.lengthShort(this.mContext, "Calling Video...");
+
+        Intent intent = new Intent(this.mContext, VideoCallActivity.class);
+        intent.putExtra(Constants.IS_CALLER_SIDE, true); // user who start a calling is a caller
+        intent.putExtra(Constants.USER_USERNAME, this.mArrayList.get(position).getUsername());
+        intent.putExtra(Constants.USER_DISPLAY_NAME, this.mArrayList.get(position).getDisplayName());
+        intent.putExtra(Constants.USER_PHOTO_URL, this.mArrayList.get(position).getPhotoUrl());
+
+        this.mContext.startActivity(intent);
+    }
+
 
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -87,7 +113,6 @@ public class VideoCallListAdapter extends RealmRecyclerViewAdapter<User, VideoCa
         public TextView tvName;
         public CircleImageView cirImgUserAvatar;
         public RippleView rvCall, rvCallVideo;
-        public View online_indicator;
 
         public ViewHolder(final View itemLayoutView) {
             super(itemLayoutView);
@@ -96,7 +121,6 @@ public class VideoCallListAdapter extends RealmRecyclerViewAdapter<User, VideoCa
             cirImgUserAvatar = (CircleImageView) itemLayoutView.findViewById(R.id.cirImgUserAvatar);
             rvCall = (RippleView) itemLayoutView.findViewById(R.id.rvCall);
             rvCallVideo = (RippleView) itemLayoutView.findViewById(R.id.rvCallVideo);
-            online_indicator = itemLayoutView.findViewById(R.id.online_indicator);
         }
     }
 }

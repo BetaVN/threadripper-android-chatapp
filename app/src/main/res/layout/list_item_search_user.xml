@@ -71,15 +71,18 @@
                 android:id="@+id/lnButtons"
                 android:layout_width="wrap_content"
                 android:layout_height="50dp"
-                android:paddingRight="15dp"
-                android:paddingEnd="15dp"
                 android:layout_alignParentRight="true"
                 android:gravity="center_vertical">
 
-                <CheckBox
-                    android:id="@+id/cbSelect"
+                <Button
+                    android:id="@+id/btnAddFriend"
+                    style="@style/ButtonOutlineAccentCorner"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:drawableLeft="@drawable/ic_action_plus_square_accent"
+                    android:drawablePadding="5dp"
+                    android:text="Add Friend"
+                    android:visibility="visible" />
 
             </LinearLayout>
         </RelativeLayout>
